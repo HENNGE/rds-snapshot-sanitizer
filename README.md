@@ -1,1 +1,34 @@
 # rds-snapshot-sanitizer
+# rds-snapshot-sanitizer
+
+Create sanitized copy of RDS snapshots and share them with selected accounts.
+
+It works by restoring an unsanitized snapshot to a temporary cluster and executing sanitizing SQL queries against it, after which sanitized snapshot will be created and optionally shared with other accounts.
+
+# Environment variable
+- `SANITIZER_RDS_CLUSTER_ID`: RDS cluster identifier whose snapshots will be sanitized.
+- `SANITIZER_CONFIG`: rds-snapshot-sanitizer configuration in JSON. See [Configuration](#configuration).
+- `SANTITIZER_RDS_INSTANCE_ACU`: (Optional) ACU to be allocatted for the temporary RDS instance. Defaults to 2 ACU.
+- `SANITIZER_SQL_MAX_CONNECTIONS`: (Optional) Number of maximum connections to be created for executing the SQL queries. Defaults to 20.
+- `SANITIZER_SHARE_KMS_KEY_ID`: (Optional) KMS key identifier to be used for the sanitized snapshot.
+- `SANITIZER_SHARE_ACCOUNT_IDS`: (Optional) List of AWS account ids to share the sanitized snapshot with.
+- `SANITIZER_AWS_REGION`: (Optional) AWS region where the RDS cluster is hosted. Defaults to `AWS_REGION` or `AWS_DEFAULT_REGION` environment variable.
+- `SANITIZER_DELETE_OLD_SNAPSHOTS`: (Optional) Whether to delete old snapshots. Defaults to False.
+- `SANITIZER_OLD_SNAPSHOT_DAYS`: (Optional) Number of days for a snapshot to be considered old. Defaults to 30.
+
+# Configuration
+The configuration is a JSON file with the following schema:
+- `"tables"`: list of table configuration
+  - `"name"`: name of the table
+  - `"columns"`: list of column configuration
+    - `"name"`: name of the column
+    - `"sanitizer"`: type of sanitizer to be used. There are two types provided, static and random.
+      - `"type"`: `"static"`
+      - `"value"`: a static string value to be used for replacement.
+
+      OR
+
+      - `"type"`: `"random"`
+      - `"kind"`: `"name"`, `"first_name"`, `"last_name"`, `"user_name"`, `"email"`, `"phone_number"`, etc. See the full list of [randomizer](https://faker.readthedocs.io/en/master/providers.html).
+  - `"drop_constraints"`: list of table constraints to be dropped
+- `"drop_indexes"`: list of index to be dropped
