@@ -26,8 +26,9 @@ def async_command(func):
 
 
 @click.command()
+@click.option("--local", is_flag=True, default=False, help="Run locally")
 @async_command
-async def main():
+async def main(local: bool):
     click.echo("#################### Finding latest snapshot ####################")
     snapshot = get_latest_snapshot(settings.rds_cluster_id)
     click.echo(f"Latest snapshot: {snapshot}")
@@ -49,7 +50,7 @@ async def main():
     click.echo("")
 
     click.echo("#################### Sanitizing ####################")
-    await sanitize(temp_cluster, ssm_param)
+    await sanitize(temp_cluster, ssm_param, local)
     click.echo("")
 
     click.echo("#################### Creating sanitized snapshot ####################")

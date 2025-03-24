@@ -59,8 +59,9 @@ async def sanitize_table(table: Table, pool: AsyncConnectionPool) -> int:
         ).rowcount
 
 
-async def sanitize(cluster: DBClusterTypeDef, ssm_param: str) -> None:
-    cluster["Endpoint"] = "localhost"
+async def sanitize(cluster: DBClusterTypeDef, ssm_param: str, local: bool) -> None:
+    if local:
+        cluster["Endpoint"] = "localhost"
     conn_string = (
         f"postgresql://{cluster['MasterUsername']}:{get_password(ssm_param)}"
         f"@{cluster['Endpoint']}:{cluster['Port']}"

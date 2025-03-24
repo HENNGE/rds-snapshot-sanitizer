@@ -28,7 +28,7 @@ The configuration is a JSON file with the following schema:
       OR
 
       - `"type"`: `"random"`
-      - `"kind"`: `"name"`, `"first_name"`, `"last_name"`, `"user_name"`, `"email"`, `"phone_number"`, etc. See the full list of [randomizer](https://faker.readthedocs.io/en/master/providers.html).
+      - `"kind"`: `"name"`, `"first_name"`, `"last_name"`, `"user_name"`, `"email"`, `"phone_number"`, etc. See the full list of [random providers](https://faker.readthedocs.io/en/master/providers.html).
   - `"drop_constraints"`: list of table constraints to be dropped
 - `"drop_indexes"`: list of index to be dropped
 
@@ -68,4 +68,16 @@ Example:
         }
     ]
 }
+```
+
+# Running locally
+The tool is meant to be run inside the same network as the RDS subnet that contains the target cluster.
+
+To run the tool locally (for debugging, etc), you need to:
+- Ensure that the temporary RDS cluster is accessible from localhost. See [port-forwarding with session manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-sessions-start.html#sessions-remote-port-forwarding).
+- Specify `--local` flag to set the RDS host target to localhost.
+
+```bash
+poetry install
+poetry run sanitizer --flag
 ```
