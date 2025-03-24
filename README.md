@@ -31,3 +31,41 @@ The configuration is a JSON file with the following schema:
       - `"kind"`: `"name"`, `"first_name"`, `"last_name"`, `"user_name"`, `"email"`, `"phone_number"`, etc. See the full list of [randomizer](https://faker.readthedocs.io/en/master/providers.html).
   - `"drop_constraints"`: list of table constraints to be dropped
 - `"drop_indexes"`: list of index to be dropped
+
+Example:
+```json
+{
+    "drop_indexes": ["users_tenant_id_email_key"],
+    "tables": [
+        {
+            "name": "users",
+            "columns": [
+                {
+                    "name": "family_name",
+                    "sanitizer": {"type": "random", "kind": "last_name"},
+                },
+                {
+                    "name": "given_name",
+                    "sanitizer": {"type": "random", "kind": "first_name"},
+                },
+                {"name": "email", "sanitizer": {"type": "random", "kind": "email"}}
+            ]
+        },
+        {
+            "name": "imported_users",
+            "drop_constraints": ["imported_users_tenant_id_email_key"],
+            "columns": [
+                {
+                    "name": "family_name",
+                    "sanitizer": {"type": "static", "kind": "doe"},
+                },
+                {
+                    "name": "given_name",
+                    "sanitizer": {"type": "static", "value": "john"},
+                },
+                {"name": "email", "sanitizer": {"type": "random", "kind": "email"}}
+            ]
+        }
+    ]
+}
+```
