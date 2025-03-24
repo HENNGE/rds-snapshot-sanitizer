@@ -1,5 +1,4 @@
 # rds-snapshot-sanitizer
-# rds-snapshot-sanitizer
 
 Create sanitized copy of RDS snapshots and share them with selected accounts.
 
