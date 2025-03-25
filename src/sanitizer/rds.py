@@ -117,6 +117,7 @@ def rotate_password(cluster: DBClusterTypeDef) -> tuple[str, DBClusterTypeDef]:
         Value=password,
         Type="SecureString",
         Description=f"Password for {cluster['DBClusterIdentifier']} RDS cluster",
+        Overwrite=True,
     )
 
     # Wait until cluster is available
