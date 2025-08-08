@@ -13,7 +13,7 @@ It works by restoring an unsanitized snapshot to a temporary cluster and executi
 - `SANITIZER_SHARE_ACCOUNT_IDS`: (Optional) List of AWS account ids to share the sanitized snapshot with.
 - `SANITIZER_AWS_REGION`: (Optional) AWS region where the RDS cluster is hosted. Defaults to `AWS_REGION` or `AWS_DEFAULT_REGION` environment variable.
 - `SANITIZER_DELETE_OLD_SNAPSHOTS`: (Optional) Whether to delete old snapshots. Defaults to False.
-- `SANITIZER_OLD_SNAPSHOT_DAYS`: (Optional) Number of days for a snapshot to be considered old. Defaults to 30.
+- `SANITIZER_OLD_SNAPSHOTS_DAYS`: (Optional) Number of days for a snapshot to be considered old. Defaults to 30.
 
 # Configuration
 The configuration is a JSON file with the following schema:
