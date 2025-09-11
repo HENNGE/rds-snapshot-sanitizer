@@ -94,12 +94,13 @@ def restore_snapshot(snapshot: DBClusterSnapshotTypeDef) -> DBClusterTypeDef:
         "Timed out when restoring cluster",
     )
 
-    # Disable AutoMinorVersionUpgrade and set PreferredBackupWindow
+    # Disable AutoMinorVersionUpgrade, set PreferredBackupWindow and BackupRetentionPeriod
     restored_cluster = rds_client.modify_db_cluster(
         DBClusterIdentifier=restored_cluster["DBClusterIdentifier"],
         AutoMinorVersionUpgrade=False,
         BackupRetentionPeriod=1,
         PreferredBackupWindow="22:00-22:30",
+        BackupRetentionPeriod=1,
         ApplyImmediately=True,
     )["DBCluster"]
 
