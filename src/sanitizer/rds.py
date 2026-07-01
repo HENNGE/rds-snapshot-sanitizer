@@ -92,6 +92,7 @@ def restore_snapshot(snapshot: DBClusterSnapshotTypeDef) -> DBClusterTypeDef:
         {"DBClusterIdentifier": restored_cluster["DBClusterIdentifier"]},
         "Restoring to temporary cluster",
         "Timed out when restoring cluster",
+        180, 
     )
 
     # Disable AutoMinorVersionUpgrade and set PreferredBackupWindow
