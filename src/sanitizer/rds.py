@@ -1,6 +1,7 @@
 import itertools
 import os
 import secrets
+import time
 from datetime import UTC, datetime
 
 import boto3
@@ -18,6 +19,14 @@ from .settings import settings
 
 rds_client = boto3.client("rds")
 ssm_client = boto3.client("ssm")
+
+# Used unless the cluster is still "creating", and if the progress check breaks.
+_FALLBACK_RESTORE_MINS = 180
+_MAX_RESTORE_MINS = 12 * 60
+_POLL_SECS = 60
+_TERMINAL_CLUSTER_STATUSES = frozenset(
+    {"deleted", "deleting", "failed", "incompatible-restore", "incompatible-parameters"}
+)
 
 
 def wait_resource(
@@ -42,6 +51,109 @@ def wait_resource(
     click.echo("")
     if not finished:
         raise TimeoutError(timeout_msg)
+
+
+def _cluster_status(response: dict | None) -> str | None:
+    try:
+        clusters = (response or {}).get("DBClusters") or []
+        status = clusters[0].get("Status") if clusters else None
+        return status if isinstance(status, str) and status else None
+    except Exception:
+        return None
+
+
+def _log_cluster_events(
+    cluster_id: str, started_at: datetime, seen: set[tuple[str, str]]
+) -> None:
+    response = rds_client.describe_events(
+        SourceIdentifier=cluster_id,
+        SourceType="db-cluster",
+        StartTime=started_at,
+        EndTime=datetime.now(UTC),
+        MaxRecords=100,
+    )
+    for event in response.get("Events") or []:
+        when = event.get("Date")
+        message = event.get("Message") or ""
+        if (key := (str(when), message)) not in seen:
+            seen.add(key)
+            click.echo(f"RDS event {when}: {message}")
+
+
+def wait_for_cluster_restore(cluster_id: str) -> None:
+    """Wait for restore. Only a ``creating`` status may use the longer cap."""
+    try:
+        _wait_for_cluster_restore(cluster_id)
+    except TimeoutError:
+        raise
+    except Exception as exc:
+        click.echo(
+            f"Restore progress check failed ({type(exc).__name__}: {exc}). "
+            f"Falling back to the {_FALLBACK_RESTORE_MINS} minute waiter."
+        )
+        wait_resource(
+            "db_cluster_available",
+            {"DBClusterIdentifier": cluster_id},
+            "Restoring to temporary cluster",
+            "Timed out when restoring cluster",
+            _FALLBACK_RESTORE_MINS,
+        )
+
+
+def _wait_for_cluster_restore(cluster_id: str) -> None:
+    cap_mins = min(
+        max(int(settings.restore_timeout_mins), _FALLBACK_RESTORE_MINS),
+        _MAX_RESTORE_MINS,
+    )
+    start = time.monotonic()
+    started_at = datetime.now(UTC)
+    seen_events: set[tuple[str, str]] = set()
+    log_events = True
+    last_status: str | None = None
+    click.echo(
+        "Restoring to temporary cluster "
+        f"(up to {cap_mins} min while creating, otherwise {_FALLBACK_RESTORE_MINS} min)"
+    )
+    waiter = rds_client.get_waiter("db_cluster_available")
+
+    while True:
+        poll_started = time.monotonic()
+        try:
+            waiter.wait(
+                WaiterConfig=WaiterConfigTypeDef(Delay=_POLL_SECS, MaxAttempts=2),
+                DBClusterIdentifier=cluster_id,
+            )
+            return
+        except WaiterError as exc:
+            last_status = _cluster_status(getattr(exc, "last_response", None))
+
+        if log_events:
+            try:
+                _log_cluster_events(cluster_id, started_at, seen_events)
+            except Exception as exc:
+                log_events = False
+                click.echo(f"RDS event logging disabled after an error: {exc}")
+
+        if last_status in _TERMINAL_CLUSTER_STATUSES:
+            raise TimeoutError(
+                f"Timed out when restoring cluster (terminal status: {last_status})"
+            )
+
+        elapsed = time.monotonic() - start
+        limit_mins = cap_mins if last_status == "creating" else _FALLBACK_RESTORE_MINS
+        click.echo(
+            f"Cluster status: {last_status} elapsed={int(elapsed)}s "
+            f"remaining={max(int(limit_mins * 60 - elapsed), 0)}s"
+        )
+        if elapsed >= limit_mins * 60:
+            raise TimeoutError(
+                "Timed out when restoring cluster "
+                f"(last observed status: {last_status})"
+            )
+        # The waiter sleeps between its own attempts. If it returned immediately,
+        # pause so an unexpected status cannot busy-loop.
+        if (spent := time.monotonic() - poll_started) < _POLL_SECS:
+            time.sleep(_POLL_SECS - spent)
 
 
 def get_latest_snapshot(rds_cluster_id: str) -> DBClusterSnapshotTypeDef:
@@ -86,14 +198,13 @@ def restore_snapshot(snapshot: DBClusterSnapshotTypeDef) -> DBClusterTypeDef:
         ),
     )["DBCluster"]
 
-    # Wait until new cluster is active
-    wait_resource(
-        "db_cluster_available",
-        {"DBClusterIdentifier": restored_cluster["DBClusterIdentifier"]},
-        "Restoring to temporary cluster",
-        "Timed out when restoring cluster",
-        180, 
+    click.echo(
+        "Restoring "
+        f"{restored_cluster['DBClusterIdentifier']} from snapshot "
+        f"{snapshot['DBClusterSnapshotIdentifier']} "
+        f"created at {snapshot['SnapshotCreateTime']}"
     )
+    wait_for_cluster_restore(restored_cluster["DBClusterIdentifier"])
 
     # Disable AutoMinorVersionUpgrade and set PreferredBackupWindow
     restored_cluster = rds_client.modify_db_cluster(
