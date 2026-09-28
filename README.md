@@ -8,6 +8,7 @@ It works by restoring an unsanitized snapshot to a temporary cluster and executi
 - `SANITIZER_RDS_CLUSTER_ID`: RDS cluster identifier whose snapshots will be sanitized.
 - `SANITIZER_CONFIG`: rds-snapshot-sanitizer configuration in JSON. See [Configuration](#configuration).
 - `SANTITIZER_RDS_INSTANCE_ACU`: (Optional) ACU to be allocatted for the temporary RDS instance. Defaults to 2 ACU.
+- `SANITIZER_RESTORE_TIMEOUT_MINS`: (Optional) Absolute cap, in minutes, for a temporary cluster restore that stays in `creating`. Defaults to 720 and is clamped to 180–720. Any other status, or a status that cannot be read, keeps the 180 minute limit.
 - `SANITIZER_SQL_MAX_CONNECTIONS`: (Optional) Number of maximum connections to be created for executing the SQL queries. Defaults to 20.
 - `SANITIZER_SHARE_KMS_KEY_ID`: (Optional) KMS key identifier to be used for the sanitized snapshot.
 - `SANITIZER_SHARE_ACCOUNT_IDS`: (Optional) List of AWS account ids to share the sanitized snapshot with.

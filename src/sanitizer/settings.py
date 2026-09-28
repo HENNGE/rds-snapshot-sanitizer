@@ -35,6 +35,7 @@ class Config(BaseModel):
 class Settings(BaseSettings):
     rds_cluster_id: str
     rds_instance_acu: int = 2
+    restore_timeout_mins: int = 720
     sql_max_connections: int = 20
     share_kms_key_id: str | None = None
     share_account_ids: list[str] = []
